@@ -47,43 +47,45 @@ Answering instructions:
 # ============================================================================
 
 SAMPLE_QUESTIONS = {
-    "📊 Topic Overview": [
-        "What are the main topics covered in the data along with their titles and descriptions?",
-        "What are the top 10 narratives by message count?",
-        "Show me the distribution of messages across all topics",
-        "Which topics have the most messages?",
-        "What are all the topic descriptions and their scores?",
-        "List all available topics with their full names"
+    "Arena Readout": [
+        "What are the main subjects being discussed, and what do they reveal about the arena?",
+        "What are the dominant narratives in the text, with topic names, incitement level, and representative examples?",
+        "What are the narratives reflected from the text about the functioning of the government?",
+        "What are the strongest grievances, fears, and hopes expressed by people?",
+        "Which narratives appear most widespread, and which appear more intense or emotionally charged?",
+        "What changed between broad parent topics and more specific child topics?"
     ],
-    "⚠️ Incitement Analysis": [
-        "Show me all messages labeled as incitement",
-        "Which topics have the highest proportion of abusive content?",
-        "What's the distribution of incitement labels across all topics?",
-        "How many messages are normal vs abusive vs incitement?",
-        "Show me the top 5 topics with the most abusive messages",
-        "What percentage of messages in each topic are abusive?"
+    "Governance": [
+        "What is the narrative toward municipal services and local authorities?",
+        "What is the narrative toward national government performance and legitimacy?",
+        "Are people satisfied in general? Break down satisfaction by topic and incitement level.",
+        "What do people like in the current situation, and which topics or examples support that?",
+        "What do people dislike in the current situation, and which topics or examples support that?",
+        "Where do people describe failures in service delivery, security, economy, or public order?"
     ],
-    "📝 Content Exploration": [
-        "Show me sample texts from topic 0_0",
-        "What are some example messages from the incitement category?",
-        "Show me 10 random translated messages with their topics",
-        "Give me examples of normal messages from the top topic",
-        "Show me the longest messages in the dataset"
+    "Peace & Conflict": [
+        "What is the narrative toward peace?",
+        "What is the narrative toward conflict, escalation, or resistance?",
+        "Which topics contain the highest incitement or abusive language, and what narratives drive it?",
+        "Are there narratives that encourage compromise, coexistence, or de-escalation?",
+        "Are there narratives that could increase tension, mobilization, or hostility?",
+        "What are the main emotional drivers behind support or opposition to peace?"
     ],
-    "🔍 Metadata & Execution": [
-        "What execution IDs are available in the data?",
-        "How many messages are in each layer of the topic hierarchy?",
-        "What models were used in the analysis?",
-        "What is the date range of the data?",
-        "Show me topic hierarchy with father topics",
-        "How many topics are in layer 0 vs layer 1?"
+    "Public Mood": [
+        "What is the overall public mood: anger, fear, frustration, hope, resignation, or confidence?",
+        "Which topics show the most negative sentiment, and what are the key examples?",
+        "Which topics show positive sentiment or satisfaction, and what are the key examples?",
+        "What are people asking for or expecting from authorities?",
+        "What are the signs of trust or distrust toward institutions?",
+        "Which narratives are most likely to influence public behavior?"
     ],
-    "📈 Cross-Analysis": [
-        "Compare incitement rates between layer 0 and layer 1 topics",
-        "Which parent topics (father_topic) have the most child topics?",
-        "Show me topics with more than 100 messages and their incitement breakdown",
-        "What's the average message count per topic by layer?",
-        "Which topics have the highest incitement to normal ratio?"
+    "Analyst Checks": [
+        "What are the early warning indicators in the text that an intelligence analyst should monitor?",
+        "Which actors, institutions, or groups are blamed, praised, or targeted in the narratives?",
+        "What are the information gaps or ambiguities that require further collection?",
+        "Which narratives appear coordinated, repeated, or unusually consistent across messages?",
+        "What are the most relevant example messages for each major narrative?",
+        "Give me an intelligence-style summary: key judgments, supporting evidence, caveats, and recommended follow-up questions."
     ]
 }
 
