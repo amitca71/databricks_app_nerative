@@ -29,12 +29,26 @@ GENIE_SPACE_ID = "01f1455a882b1cd69cba447d909362d0"
 DASHBOARD_URL = f"{DATABRICKS_HOST}/dashboardsv3/01f1425e745118cf87a3d81fdf2ee5a7/published"
 GENIE_SPACE_URL = f"{DATABRICKS_HOST}/genie/rooms/{GENIE_SPACE_ID}"
 
+ANSWER_INSTRUCTIONS = """
+Answering instructions:
+- Write for analysts, not engineers. Prefer interpretation, implications, and investigative takeaways over technical implementation details.
+- Start with the main insight in plain language, then support it with the most relevant counts, percentages, comparisons, and examples.
+- When results show a pattern, explain why it may matter and what an analyst should look at next.
+- Call out caveats clearly, including small sample sizes, missing labels, zero-row results, ambiguous topic names, or filters such as execution_id/model/layer.
+- Keep SQL mechanics, table names, and IDs secondary unless they are needed to verify or reproduce the finding.
+- When presenting topics or narratives, never identify them only by ID. Include the topic title, name, description, or full_topic whenever available.
+- If a topic ID is useful, show it alongside the human-readable name, not instead of it.
+- If the data does not contain a human-readable topic name for a topic ID, say that explicitly.
+- When asked about a narrative or nerative, discuss the related topic(s), incitement level or label, and include relevant example messages when available.
+""".strip()
+
 # ============================================================================
 # Sample Questions
 # ============================================================================
 
 SAMPLE_QUESTIONS = {
     "📊 Topic Overview": [
+        "What are the main topics covered in the data along with their titles and descriptions?",
         "What are the top 10 narratives by message count?",
         "Show me the distribution of messages across all topics",
         "Which topics have the most messages?",
@@ -123,13 +137,14 @@ def query_genie_space(question: str, space_id: str, auth_headers: dict, host: st
     """
     conversation_url = f"{host}/api/2.0/genie/spaces/{space_id}/start-conversation"
     headers = {**auth_headers, "Content-Type": "application/json"}
+    prompt = f"{ANSWER_INSTRUCTIONS}\n\nUser question:\n{question}"
     
     try:
         # Start conversation
         response = requests.post(
             conversation_url,
             headers=headers,
-            json={"content": question},
+            json={"content": prompt},
             timeout=30
         )
         response.raise_for_status()
@@ -352,7 +367,7 @@ def display_genie_response(response: dict, results: dict | None) -> None:
 
 def main():
     st.set_page_config(
-        page_title="BERTopic Narrative Analysis",
+        page_title="Narrative Analysis",
         page_icon="📊",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -400,8 +415,8 @@ def main():
     """, unsafe_allow_html=True)
     
     # Header
-    st.markdown('<div class="main-header">🔍 BERTopic Narrative Analysis</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Explore topics, narratives, and incitement patterns from your BERTopic analysis</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🔍 Narrative Analysis</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Explore topics, narratives, and incitement patterns </div>', unsafe_allow_html=True)
     
     # Sidebar
     with st.sidebar:
@@ -472,7 +487,7 @@ def main():
         
         # Question input
         user_question = st.text_area(
-            "Enter your question about the BERTopic data:",
+            "Enter your question about the data:",
             value=st.session_state.selected_question,
             height=120,
             placeholder="e.g., What are the top narratives by message count?",
@@ -541,7 +556,7 @@ def main():
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: #666; padding: 1rem;'>
-        <p><strong>Powered by Databricks Genie</strong> | BERTopic Analysis Dashboard</p>
+        <p><strong>Powered by Databricks Genie</strong> | Analysis Dashboard</p>
         <p style='font-size: 0.85rem;'>📊 Data: amit.bertopic catalog | Two-layer recursion with incitement enrichment</p>
         <p style='font-size: 0.75rem; color: #999;'>Last updated: May 8, 2026</p>
     </div>
