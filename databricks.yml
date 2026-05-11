@@ -37,6 +37,31 @@ resources:
             securable_type: TABLE
             permission: SELECT
 
+        - name: bertopic-input-index
+          description: BERTopic input vector search index used as agent source context
+          uc_securable:
+            securable_full_name: amit.bertopic.bertopic_input_index
+            securable_type: TABLE
+            permission: SELECT
+
+        - name: agent-llm-llama-8b
+          description: Llama 3.1 8B chat model for cost-effective agent synthesis
+          serving_endpoint:
+            name: databricks-meta-llama-3-1-8b-instruct
+            permission: CAN_QUERY
+
+        - name: agent-llm-gemma-12b
+          description: Gemma 3 12B chat model for cost-effective agent synthesis
+          serving_endpoint:
+            name: databricks-gemma-3-12b
+            permission: CAN_QUERY
+
+        - name: agent-llm-gpt-oss-20b
+          description: GPT OSS 20B chat model for higher-quality agent synthesis
+          serving_endpoint:
+            name: databricks-gpt-oss-20b
+            permission: CAN_QUERY
+
       
       config:
         command:
