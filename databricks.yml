@@ -6,20 +6,63 @@ resources:
     bertopic_analysis:
       name: bertopic-narrative-analysis
       description: "BERTopic Narrative Analysis with Genie Integration"
-      
-      resources:
-        - name: app-compute
-          description: Compute for the Streamlit app
-          
+
       source_code_path: ./
+
+      resources:
+        - name: sql-wh
+          description: Serverless Starter Warehouse for Genie and dashboard queries
+          sql_warehouse:
+            id: 593af0ca865fa166
+            permission: CAN_USE
+
+        - name: genie-space
+          description: native_topic_and_toxicity Genie space
+          genie_space:
+            name: native_topic_and_toxicity
+            space_id: 01f1455a882b1cd69cba447d909362d0
+            permission: CAN_RUN
+
+        - name: v1-msg-sent-topic
+          description: BERTopic view
+          uc_securable:
+            securable_full_name: amit.bertopic.v1_messages_sentiment_and_topic
+            securable_type: TABLE
+            permission: SELECT
+
+        - name: v1-topic-scores-names
+          description: BERTopic view
+          uc_securable:
+            securable_full_name: amit.bertopic.v1_topic_info_with_scores_and_names
+            securable_type: TABLE
+            permission: SELECT
+
+        - name: v2-topic-scores-l1
+          description: BERTopic view
+          uc_securable:
+            securable_full_name: amit.bertopic.v2_topic_info_with_scores_layer_1
+            securable_type: TABLE
+            permission: SELECT
+
+        - name: v3-msg-topic
+          description: BERTopic view
+          uc_securable:
+            securable_full_name: amit.bertopic.v3_messages_sentiment_topic_consolidated
+            securable_type: TABLE
+            permission: SELECT
+
+        - name: v-topic-info-local-low-score
+          description: BERTopic view
+          uc_securable:
+            securable_full_name: amit.bertopic.v_topic_info_local_low_score
+            securable_type: TABLE
+            permission: SELECT
       
       config:
         command:
           - "streamlit"
           - "run"
           - "app.py"
-          - "--server.port=8080"
-          - "--server.address=0.0.0.0"
 
 targets:
   dev:
