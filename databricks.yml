@@ -23,20 +23,6 @@ resources:
             space_id: 01f1455a882b1cd69cba447d909362d0
             permission: CAN_RUN
 
-        - name: v1-msg-sent-topic
-          description: BERTopic view
-          uc_securable:
-            securable_full_name: amit.bertopic.v1_messages_sentiment_and_topic
-            securable_type: TABLE
-            permission: SELECT
-
-        - name: v1-topic-scores-names
-          description: BERTopic view
-          uc_securable:
-            securable_full_name: amit.bertopic.v1_topic_info_with_scores_and_names
-            securable_type: TABLE
-            permission: SELECT
-
         - name: v2-topic-scores-l1
           description: BERTopic view
           uc_securable:
@@ -51,12 +37,6 @@ resources:
             securable_type: TABLE
             permission: SELECT
 
-        - name: v-topic-info-local-low-score
-          description: BERTopic view
-          uc_securable:
-            securable_full_name: amit.bertopic.v_topic_info_local_low_score
-            securable_type: TABLE
-            permission: SELECT
       
       config:
         command:
