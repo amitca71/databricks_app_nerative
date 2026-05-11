@@ -1,0 +1,28 @@
+bundle:
+  name: bertopic-narrative-app
+
+resources:
+  apps:
+    bertopic_analysis:
+      name: bertopic-narrative-analysis
+      description: "BERTopic Narrative Analysis with Genie Integration"
+      
+      resources:
+        - name: app-compute
+          description: Compute for the Streamlit app
+          
+      source_code_path: ./
+      
+      config:
+        command:
+          - "streamlit"
+          - "run"
+          - "app.py"
+          - "--server.port=8080"
+          - "--server.address=0.0.0.0"
+
+targets:
+  dev:
+    mode: development
+    workspace:
+      host: https://dbc-de54b796-a6c4.cloud.databricks.com
