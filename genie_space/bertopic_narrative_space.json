@@ -5,43 +5,67 @@
       {
         "id": "00000000000000000000000000000001",
         "question": [
-          "What are the dominant narratives, with topic names, counts, incitement level, and representative examples?"
+          "מה הנרטיבים המרכזיים בזירה?"
         ]
       },
       {
         "id": "00000000000000000000000000000002",
         "question": [
-          "What is the narrative toward municipal services and local authorities?"
+          "מה הנרטיב כלפי יהודים וישראל?"
         ]
       },
       {
         "id": "00000000000000000000000000000003",
         "question": [
-          "Which topics contain the highest incitement or abusive language?"
+          "סווג את ההסתות לפי למי מיועדות"
         ]
       },
       {
         "id": "00000000000000000000000000000004",
         "question": [
-          "Find messages semantically related to government performance and summarize the themes."
+          "מי הם השחקנים או הקבוצות שמואשמים או מותקפים בנרטיבים?"
         ]
       },
       {
         "id": "00000000000000000000000000000005",
         "question": [
-          "Give an intelligence-style summary: key judgments, supporting evidence, caveats, and follow-up questions."
+          "אילו מסרים חוזרים על עצמם ומה רמת ההסתה שלהם?"
         ]
       },
       {
         "id": "00000000000000000000000000000006",
         "question": [
-          "What changed between broad parent topics and more specific child topics?"
+          "What are the dominant narratives, with topic names, counts, incitement level, and representative examples?"
         ]
       },
       {
         "id": "00000000000000000000000000000007",
         "question": [
-          "מה הנרטיב כלפי יהודים וישראל?"
+          "What is the narrative toward municipal services and local authorities?"
+        ]
+      },
+      {
+        "id": "00000000000000000000000000000008",
+        "question": [
+          "Which topics contain the highest incitement or abusive language?"
+        ]
+      },
+      {
+        "id": "00000000000000000000000000000009",
+        "question": [
+          "Find messages semantically related to government performance and summarize the themes."
+        ]
+      },
+      {
+        "id": "00000000000000000000000000000010",
+        "question": [
+          "Give an intelligence-style summary: key judgments, supporting evidence, caveats, and follow-up questions."
+        ]
+      },
+      {
+        "id": "00000000000000000000000000000011",
+        "question": [
+          "What changed between broad parent topics and more specific child topics?"
         ]
       }
     ]
@@ -190,7 +214,7 @@
           {
             "column_name": "full_topic",
             "description": [
-              "Full human-readable topic or narrative label. Always include this when presenting topic ids."
+              "Full topic or narrative label when available, but it can be a code-like internal cluster label such as 0_0. Prefer title or description for analyst-facing labels."
             ],
             "enable_entity_matching": true,
             "synonyms": [
@@ -235,7 +259,7 @@
           {
             "column_name": "topic",
             "description": [
-              "Numeric topic id. Never present this without also showing full_topic, title, or description."
+              "Numeric topic id. Never present this without also showing title, description, or a non-code full_topic."
             ],
             "synonyms": [
               "topic id",
@@ -273,7 +297,7 @@
           {
             "column_name": "full_topic",
             "description": [
-              "Full human-readable topic or narrative label associated with the message."
+              "Topic or narrative label associated with the message, but it can be a code-like internal cluster label such as 0_0. Join to v2_topic_info_with_scores_layer_1 and prefer title or description for analyst-facing labels."
             ],
             "enable_entity_matching": true,
             "synonyms": [
@@ -356,7 +380,7 @@
           {
             "column_name": "topic",
             "description": [
-              "Numeric topic id for the message. Always show the human-readable full_topic when discussing this id."
+              "Numeric topic id for the message. Always join to topic metadata and show title, description, or a non-code full_topic when discussing this id."
             ],
             "synonyms": [
               "topic id",
@@ -384,7 +408,7 @@
       {
         "id": "10000000000000000000000000000001",
         "content": [
-          "This Genie Space supports BERTopic narrative analysis. Use amit.bertopic.v2_topic_info_with_scores_layer_1 for topic metadata, topic counts, hierarchy, titles, and descriptions. Use amit.bertopic.v3_messages_sentiment_topic_consolidated for message-level evidence, incitement labels, timestamps, model filters, and examples. Use amit.bertopic.bertopic_input as the raw source table behind the vector index. The vector search index is amit.bertopic.bertopic_input_index. When the user asks for semantically related examples, closest evidence, or concepts that might not appear as exact keywords, use the SQL VECTOR_SEARCH function against amit.bertopic.bertopic_input_index and then join hits back to v3 on id when topic/incitement context is needed. Prefer HYBRID vector search for concept searches, with num_results defaulting to 10 unless the user asks for a different number. Always present human-readable topic labels such as full_topic, title, or description; never identify a narrative only by topic id. The message-level view uses the misspelled column incitment_label; the raw input table uses incitement_label. For analyst questions, start with the main finding, then support it with counts, incitement distribution, topic labels, and representative examples. If vector search is unavailable, slow, or returns no rows, answer from the structured views and state that direct vector evidence was limited."
+          "This Genie Space supports BERTopic narrative analysis. Use amit.bertopic.v2_topic_info_with_scores_layer_1 for topic metadata, topic counts, hierarchy, titles, and descriptions. Use amit.bertopic.v3_messages_sentiment_topic_consolidated for message-level evidence, incitement labels, timestamps, model filters, and examples. Use amit.bertopic.bertopic_input as the raw source table behind the vector index. The vector search index is amit.bertopic.bertopic_input_index. When the user asks for semantically related examples, closest evidence, or concepts that might not appear as exact keywords, use the SQL VECTOR_SEARCH function against amit.bertopic.bertopic_input_index and then join hits back to v3 on id when topic/incitement context is needed. Prefer HYBRID vector search for concept searches, with num_results defaulting to 10 unless the user asks for a different number. Always present human-readable topic labels from title or description first; never identify a narrative only by topic id or a code-like full_topic value. Topic labeling rule: `topic`, `father_topic`, and code-like `full_topic` values such as `0_0`, `-1_1`, or `-1_0` are internal identifiers, not analyst-facing narrative names. For every topic-level answer, query and present `title` first, then `description`, then only a non-code `full_topic`. Use a display expression such as `COALESCE(NULLIF(title, ''), NULLIF(description, ''), CASE WHEN full_topic RLIKE '^-?[0-9]+_[0-9]+$' THEN NULL ELSE full_topic END, CAST(topic AS STRING)) AS topic_display_name`. If message-level data from `amit.bertopic.v3_messages_sentiment_topic_consolidated` is used, join it to `amit.bertopic.v2_topic_info_with_scores_layer_1` on `execution_id`, `topic`, and `layer` so the answer contains `topic_display_name`, `title`, or `description`. Do not summarize narratives as bare IDs like `0_0`. The message-level view uses the misspelled column incitment_label; the raw input table uses incitement_label. For analyst questions, start with the main finding, then support it with counts, incitement distribution, topic labels, and representative examples. If vector search is unavailable, slow, or returns no rows, answer from the structured views and state that direct vector evidence was limited."
         ]
       }
     ],
@@ -396,10 +420,11 @@
         ],
         "sql": [
           "SELECT\n",
-          "  topic,\n",
-          "  full_topic,\n",
+          "  COALESCE(NULLIF(title, ''), NULLIF(description, ''), CASE WHEN full_topic RLIKE '^-?[0-9]+_[0-9]+$' THEN NULL ELSE full_topic END, CAST(topic AS STRING)) AS topic_display_name,\n",
           "  title,\n",
           "  description,\n",
+          "  topic AS topic_id,\n",
+          "  full_topic AS internal_full_topic,\n",
           "  layer,\n",
           "  count\n",
           "FROM amit.bertopic.v2_topic_info_with_scores_layer_1\n",
@@ -414,11 +439,17 @@
         ],
         "sql": [
           "SELECT\n",
-          "  full_topic,\n",
-          "  incitment_label,\n",
+          "  COALESCE(NULLIF(t.title, ''), NULLIF(t.description, ''), CASE WHEN m.full_topic RLIKE '^-?[0-9]+_[0-9]+$' THEN NULL ELSE m.full_topic END, CAST(m.topic AS STRING)) AS topic_display_name,\n",
+          "  t.title,\n",
+          "  t.description,\n",
+          "  m.topic AS topic_id,\n",
+          "  m.full_topic AS internal_full_topic,\n",
+          "  m.incitment_label,\n",
           "  COUNT(*) AS message_count\n",
-          "FROM amit.bertopic.v3_messages_sentiment_topic_consolidated\n",
-          "GROUP BY full_topic, incitment_label\n",
+          "FROM amit.bertopic.v3_messages_sentiment_topic_consolidated m\n",
+          "LEFT JOIN amit.bertopic.v2_topic_info_with_scores_layer_1 t\n",
+          "  ON m.execution_id = t.execution_id AND m.topic = t.topic AND m.layer = t.layer\n",
+          "GROUP BY topic_display_name, t.title, t.description, m.topic, m.full_topic, m.incitment_label\n",
           "ORDER BY message_count DESC\n",
           "LIMIT 25"
         ]
@@ -430,14 +461,18 @@
         ],
         "sql": [
           "SELECT\n",
-          "  full_topic,\n",
-          "  incitment_label,\n",
-          "  translated,\n",
-          "  text\n",
-          "FROM amit.bertopic.v3_messages_sentiment_topic_consolidated\n",
-          "WHERE lower(full_topic) LIKE '%government%'\n",
-          "   OR lower(translated) LIKE '%government%'\n",
-          "   OR lower(text) LIKE '%government%'\n",
+          "  COALESCE(NULLIF(t.title, ''), NULLIF(t.description, ''), CASE WHEN m.full_topic RLIKE '^-?[0-9]+_[0-9]+$' THEN NULL ELSE m.full_topic END, CAST(m.topic AS STRING)) AS topic_display_name,\n",
+          "  t.title,\n",
+          "  t.description,\n",
+          "  m.incitment_label,\n",
+          "  m.translated,\n",
+          "  m.text\n",
+          "FROM amit.bertopic.v3_messages_sentiment_topic_consolidated m\n",
+          "LEFT JOIN amit.bertopic.v2_topic_info_with_scores_layer_1 t\n",
+          "  ON m.execution_id = t.execution_id AND m.topic = t.topic AND m.layer = t.layer\n",
+          "WHERE lower(COALESCE(t.title, t.description, m.full_topic, '')) LIKE '%government%'\n",
+          "   OR lower(m.translated) LIKE '%government%'\n",
+          "   OR lower(m.text) LIKE '%government%'\n",
           "LIMIT 20"
         ]
       },
@@ -475,7 +510,9 @@
           "  )\n",
           ")\n",
           "SELECT\n",
-          "  m.full_topic,\n",
+          "  COALESCE(NULLIF(t.title, ''), NULLIF(t.description, ''), CASE WHEN m.full_topic RLIKE '^-?[0-9]+_[0-9]+$' THEN NULL ELSE m.full_topic END, CAST(m.topic AS STRING)) AS topic_display_name,\n",
+          "  t.title,\n",
+          "  t.description,\n",
           "  m.incitment_label,\n",
           "  h.id,\n",
           "  COALESCE(h.translated, m.translated) AS translated,\n",
@@ -483,6 +520,8 @@
           "FROM hits h\n",
           "LEFT JOIN amit.bertopic.v3_messages_sentiment_topic_consolidated m\n",
           "  ON h.id = m.id\n",
+          "LEFT JOIN amit.bertopic.v2_topic_info_with_scores_layer_1 t\n",
+          "  ON m.execution_id = t.execution_id AND m.topic = t.topic AND m.layer = t.layer\n",
           "LIMIT 10"
         ]
       },
@@ -495,8 +534,9 @@
           "SELECT\n",
           "  father_topic,\n",
           "  layer,\n",
-          "  topic,\n",
-          "  full_topic,\n",
+          "  COALESCE(NULLIF(title, ''), NULLIF(description, ''), CASE WHEN full_topic RLIKE '^-?[0-9]+_[0-9]+$' THEN NULL ELSE full_topic END, CAST(topic AS STRING)) AS topic_display_name,\n",
+          "  topic AS topic_id,\n",
+          "  full_topic AS internal_full_topic,\n",
           "  title,\n",
           "  description,\n",
           "  count\n",
@@ -533,7 +573,7 @@
           "id": "22000000000000000000000000000001",
           "alias": "topic_label",
           "sql": [
-            "COALESCE(full_topic, title, description, CAST(topic AS STRING))"
+            "COALESCE(NULLIF(title, ''), NULLIF(description, ''), CASE WHEN full_topic RLIKE '^-?[0-9]+_[0-9]+$' THEN NULL ELSE full_topic END, CAST(topic AS STRING))"
           ],
           "display_name": "topic label",
           "synonyms": [
@@ -542,10 +582,10 @@
             "human-readable topic"
           ],
           "comment": [
-            "Human-readable topic label fallback."
+            "Analyst-facing topic label fallback. Avoids code-like full_topic values unless no title or description exists."
           ],
           "instruction": [
-            "Use this expression when presenting topic or narrative names."
+            "Use this expression when presenting topic or narrative names. Prefer the alias topic_display_name in final SQL."
           ]
         }
       ],
@@ -583,7 +623,7 @@
           {
             "format": "SQL",
             "content": [
-              "SELECT topic, full_topic, title, count\n",
+              "SELECT COALESCE(NULLIF(title, ''), NULLIF(description, ''), CASE WHEN full_topic RLIKE '^-?[0-9]+_[0-9]+$' THEN NULL ELSE full_topic END, CAST(topic AS STRING)) AS topic_display_name, topic AS topic_id, title, description, count\n",
               "FROM amit.bertopic.v2_topic_info_with_scores_layer_1\n",
               "ORDER BY count DESC\n",
               "LIMIT 5"

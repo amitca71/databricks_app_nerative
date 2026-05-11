@@ -99,9 +99,13 @@ Answering instructions:
 - When results show a pattern, explain why it may matter and what an analyst should look at next.
 - Call out caveats clearly, including small sample sizes, missing labels, zero-row results, ambiguous topic names, or filters such as execution_id/model/layer.
 - Keep SQL mechanics, table names, and IDs secondary unless they are needed to verify or reproduce the finding.
-- When presenting topics or narratives, never identify them only by ID. Include the topic title, name, description, or full_topic whenever available.
-- If a topic ID is useful, show it alongside the human-readable name, not instead of it.
+- When presenting topics or narratives, never identify them only by ID or by a code-like cluster label such as "0_0", "-1_1", or "-1_0".
+- Treat `topic`, `father_topic`, and code-like `full_topic` values as internal identifiers, not analyst-facing narrative names.
+- Prefer `title` first, then `description`, then a non-code `full_topic`. If only an internal identifier is available, say that the title/description is missing instead of calling the identifier a narrative.
+- If a topic ID is useful, show it in parentheses after the human-readable title or description, not instead of it.
 - If the data does not contain a human-readable topic name for a topic ID, say that explicitly.
+- For message-level topic analysis, join `amit.bertopic.v3_messages_sentiment_topic_consolidated` to `amit.bertopic.v2_topic_info_with_scores_layer_1` on `execution_id`, `topic`, and `layer` so `title` or `description` is available.
+- In generated SQL, expose an analyst-facing column named `topic_display_name` using `title`, then `description`, then only a non-code `full_topic`.
 - When asked about a narrative or nerative, discuss the related topic(s), incitement level or label, and include relevant example messages when available.
 - Do not stop with "there are no messages" just because the exact term in the question is absent. If the exact concept is missing, say that direct evidence is limited, then analyze the closest relevant themes in the data. For questions about government or goverment, also check municipal services, local authorities, public institutions, service delivery, security, economy, public order, legitimacy, and trust in authorities.
 """.strip()
@@ -112,6 +116,11 @@ Answering instructions:
 
 SAMPLE_QUESTIONS = {
     "Arena Readout": [
+        "מה הנרטיבים המרכזיים בזירה?",
+        "מה הנרטיב כלפי יהודים וישראל?",
+        "סווג את ההסתות לפי למי מיועדות",
+        "מי הם השחקנים או הקבוצות שמואשמים או מותקפים בנרטיבים?",
+        "אילו מסרים חוזרים על עצמם ומה רמת ההסתה שלהם?",
         "look at incitement messages and summarize who the hatress is pointing",
         "What are the main subjects being discussed, and what do they reveal about the arena?",
         "What are the dominant narratives in the text, with topic names, incitement level, and representative examples?",
@@ -130,6 +139,8 @@ SAMPLE_QUESTIONS = {
     ],
     "Peace & Conflict": [
         "מה הנרטיב כלפי יהודים וישראל?",
+        "סווג את ההסתות לפי למי מיועדות",
+        "מי הם השחקנים או הקבוצות שמואשמים או מותקפים בנרטיבים?",
         "What is the narrative toward peace?",
         "What is the narrative toward conflict, escalation, or resistance?",
         "Which topics contain the highest incitement or abusive language, and what narratives drive it?",
@@ -145,13 +156,13 @@ SAMPLE_QUESTIONS = {
         "What are the signs of trust or distrust toward institutions?",
         "Which narratives are most likely to influence public behavior?"
     ],
-    "Analyst Checks": [
-        "What are the early warning indicators in the text that an intelligence analyst should monitor?",
-        "Which actors, institutions, or groups are blamed, praised, or targeted in the narratives?",
-        "What are the information gaps or ambiguities that require further collection?",
-        "Which narratives appear coordinated, repeated, or unusually consistent across messages?",
-        "What are the most relevant example messages for each major narrative?",
-        "Give me an intelligence-style summary: key judgments, supporting evidence, caveats, and recommended follow-up questions."
+    "בדיקות אנליסט": [
+        "מהם סימני האזהרה המוקדמים בטקסט שאנליסט מודיעין צריך לעקוב אחריהם?",
+        "אילו שחקנים, מוסדות או קבוצות מואשמים, מקבלים שבח או מסומנים כמטרה בנרטיבים?",
+        "מהם פערי המידע או העמימויות שמצריכים איסוף נוסף?",
+        "אילו נרטיבים נראים מתואמים, חוזרים על עצמם או עקביים באופן חריג בין המסרים?",
+        "מהם המסרים לדוגמה הרלוונטיים ביותר לכל נרטיב מרכזי?",
+        "תן סיכום בסגנון מודיעיני: הערכות מרכזיות, ראיות תומכות, הסתייגויות ושאלות המשך מומלצות."
     ]
 }
 
@@ -545,6 +556,9 @@ You are a narrative analysis agent.
 Use the supplied structured metadata results and vector source snippets to answer the user's question.
 Prefer a direct analytic answer over tool mechanics.
 Use structured results for counts, topic metadata, labels, and aggregate claims.
+For topic labels, use analyst-facing names only: prefer `title`, then `description`, then a non-code `full_topic`.
+Values like `0_0`, `-1_1`, and `-1_0` are internal topic identifiers, not narrative titles. Do not present them as the narrative name.
+If the structured result contains only internal identifiers for a topic, state that the topic title/description is missing and keep the identifier only as an internal reference.
 Use vector snippets for example language, qualitative evidence, and grounding.
 If structured data and vector snippets disagree or one is missing, say that plainly.
 When citing examples from vector snippets, cite Source N or id when available.
