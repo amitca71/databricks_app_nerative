@@ -28,6 +28,8 @@ DATABRICKS_HOST = normalize_databricks_host(
 GENIE_SPACE_ID = "01f1455a882b1cd69cba447d909362d0"
 DASHBOARD_URL = f"{DATABRICKS_HOST}/dashboardsv3/01f1425e745118cf87a3d81fdf2ee5a7/published"
 GENIE_SPACE_URL = f"{DATABRICKS_HOST}/genie/rooms/{GENIE_SPACE_ID}"
+CONTEXT_MAX_EXCHANGES = 3
+CONTEXT_ENTRY_MAX_CHARS = 900
 
 ANSWER_INSTRUCTIONS = """
 Answering instructions:
@@ -40,6 +42,7 @@ Answering instructions:
 - If a topic ID is useful, show it alongside the human-readable name, not instead of it.
 - If the data does not contain a human-readable topic name for a topic ID, say that explicitly.
 - When asked about a narrative or nerative, discuss the related topic(s), incitement level or label, and include relevant example messages when available.
+- Do not stop with "there are no messages" just because the exact term in the question is absent. If the exact concept is missing, say that direct evidence is limited, then analyze the closest relevant themes in the data. For questions about government or goverment, also check municipal services, local authorities, public institutions, service delivery, security, economy, public order, legitimacy, and trust in authorities.
 """.strip()
 
 # ============================================================================
@@ -93,6 +96,58 @@ SAMPLE_QUESTIONS = {
 # Databricks Genie API Functions
 # ============================================================================
 
+def truncate_text(text: str, max_chars: int) -> str:
+    text = " ".join(str(text or "").split())
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 3].rstrip() + "..."
+
+
+def build_context_prompt(context_items: list[dict]) -> str:
+    if not context_items:
+        return ""
+
+    context_lines = [
+        "Recent session context. Use this only to resolve follow-up references; "
+        "do not treat it as a substitute for querying the data."
+    ]
+
+    for idx, item in enumerate(context_items[-CONTEXT_MAX_EXCHANGES:], start=1):
+        context_lines.append(
+            f"{idx}. Previous question: {truncate_text(item.get('question'), 260)}"
+        )
+        answer = truncate_text(item.get("answer"), CONTEXT_ENTRY_MAX_CHARS)
+        if answer:
+            context_lines.append(f"   Previous answer summary: {answer}")
+        if item.get("row_count") is not None:
+            context_lines.append(f"   Previous row count: {item['row_count']}")
+
+    return "\n".join(context_lines)
+
+
+def build_genie_prompt(question: str, context_items: list[dict] | None = None) -> str:
+    prompt_parts = [ANSWER_INSTRUCTIONS]
+    context_prompt = build_context_prompt(context_items or [])
+    if context_prompt:
+        prompt_parts.append(context_prompt)
+    prompt_parts.append(f"Current user question:\n{question}")
+    return "\n\n".join(prompt_parts)
+
+
+def build_context_item(question: str, results: dict) -> dict:
+    answer = results.get("text_response") or ""
+    if not answer and results.get("row_count") == 0:
+        answer = "The generated SQL query returned 0 rows."
+    if not answer and results.get("sql_query"):
+        answer = "A SQL query was generated, but no narrative answer was returned."
+
+    return {
+        "question": question,
+        "answer": truncate_text(answer, CONTEXT_ENTRY_MAX_CHARS),
+        "row_count": results.get("row_count"),
+    }
+
+
 def get_databricks_auth_headers() -> tuple[dict, str | None]:
     """Return Databricks API auth headers for local dev or Databricks Apps."""
     token = os.getenv("DATABRICKS_TOKEN")
@@ -124,7 +179,13 @@ def get_databricks_auth_headers() -> tuple[dict, str | None]:
         return {}, f"Databricks SDK authentication failed: {e}"
 
 
-def query_genie_space(question: str, space_id: str, auth_headers: dict, host: str) -> dict:
+def query_genie_space(
+    question: str,
+    space_id: str,
+    auth_headers: dict,
+    host: str,
+    context_items: list[dict] | None = None,
+) -> dict:
     """
     Query a Databricks Genie space with a natural language question.
     
@@ -139,7 +200,7 @@ def query_genie_space(question: str, space_id: str, auth_headers: dict, host: st
     """
     conversation_url = f"{host}/api/2.0/genie/spaces/{space_id}/start-conversation"
     headers = {**auth_headers, "Content-Type": "application/json"}
-    prompt = f"{ANSWER_INSTRUCTIONS}\n\nUser question:\n{question}"
+    prompt = build_genie_prompt(question, context_items)
     
     try:
         # Start conversation
@@ -384,6 +445,8 @@ def main():
         st.session_state.last_response = None
     if "last_results" not in st.session_state:
         st.session_state.last_results = None
+    if "context_cache" not in st.session_state:
+        st.session_state.context_cache = []
     
     # Custom CSS
     st.markdown("""
@@ -480,6 +543,24 @@ def main():
                 if st.button(f"🔄 {hist_q[:40]}...", key=f"hist_{i}", use_container_width=True):
                     st.session_state.selected_question = hist_q
                     st.rerun()
+
+        st.markdown("---")
+
+        # Short-lived context cache for follow-up questions in this Streamlit session.
+        st.markdown("### 🧠 Context")
+        context_count = len(st.session_state.context_cache)
+        context_label = "exchange" if context_count == 1 else "exchanges"
+        st.caption(
+            f"{context_count} recent {context_label} cached for follow-up questions."
+        )
+        if st.button(
+            "Clear Context",
+            key="clear_context",
+            use_container_width=True,
+            disabled=context_count == 0,
+        ):
+            st.session_state.context_cache = []
+            st.rerun()
     
     # Main content area
     col1, col2 = st.columns([3, 1])
@@ -539,11 +620,19 @@ def main():
                     question=user_question,
                     space_id=GENIE_SPACE_ID,
                     auth_headers=auth_headers,
-                    host=DATABRICKS_HOST
+                    host=DATABRICKS_HOST,
+                    context_items=st.session_state.context_cache,
                 )
                 st.session_state.last_response = response
                 if not response.get("error"):
-                    st.session_state.last_results = extract_query_results(response)
+                    results = extract_query_results(response)
+                    st.session_state.last_results = results
+                    st.session_state.context_cache.append(
+                        build_context_item(user_question, results)
+                    )
+                    st.session_state.context_cache = st.session_state.context_cache[
+                        -CONTEXT_MAX_EXCHANGES:
+                    ]
     
     elif submit_button and not user_question:
         st.warning("⚠️ Please enter a question")
