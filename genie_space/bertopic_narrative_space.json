@@ -1,0 +1,633 @@
+{
+  "version": 2,
+  "config": {
+    "sample_questions": [
+      {
+        "id": "00000000000000000000000000000001",
+        "question": [
+          "What are the dominant narratives, with topic names, counts, incitement level, and representative examples?"
+        ]
+      },
+      {
+        "id": "00000000000000000000000000000002",
+        "question": [
+          "What is the narrative toward municipal services and local authorities?"
+        ]
+      },
+      {
+        "id": "00000000000000000000000000000003",
+        "question": [
+          "Which topics contain the highest incitement or abusive language?"
+        ]
+      },
+      {
+        "id": "00000000000000000000000000000004",
+        "question": [
+          "Find messages semantically related to government performance and summarize the themes."
+        ]
+      },
+      {
+        "id": "00000000000000000000000000000005",
+        "question": [
+          "Give an intelligence-style summary: key judgments, supporting evidence, caveats, and follow-up questions."
+        ]
+      },
+      {
+        "id": "00000000000000000000000000000006",
+        "question": [
+          "What changed between broad parent topics and more specific child topics?"
+        ]
+      },
+      {
+        "id": "00000000000000000000000000000007",
+        "question": [
+          "מה הנרטיב כלפי יהודים וישראל?"
+        ]
+      }
+    ]
+  },
+  "data_sources": {
+    "tables": [
+      {
+        "identifier": "amit.bertopic.bertopic_input",
+        "description": [
+          "Raw message table and source table for the vector search index amit.bertopic.bertopic_input_index. Use it for original text, translated text, flattened incitement fields, and message ids. Do not directly use text_embedding unless explicitly asked."
+        ],
+        "column_configs": [
+          {
+            "column_name": "id",
+            "description": [
+              "Unique message id. Use this to join raw vector-search hits back to consolidated message/topic data."
+            ],
+            "synonyms": [
+              "message id",
+              "document id",
+              "source id"
+            ]
+          },
+          {
+            "column_name": "incitement",
+            "description": [
+              "Nested incitement model output. Prefer the flattened columns incitement_label, incitement_confidence, and incitement_prob_incitement for SQL analysis."
+            ]
+          },
+          {
+            "column_name": "incitement_confidence",
+            "description": [
+              "Confidence score for the incitement classification."
+            ],
+            "synonyms": [
+              "confidence",
+              "incitement confidence"
+            ]
+          },
+          {
+            "column_name": "incitement_label",
+            "description": [
+              "Flattened incitement classification label for the raw message."
+            ],
+            "enable_entity_matching": true,
+            "enable_format_assistance": true,
+            "synonyms": [
+              "incitement",
+              "abusive",
+              "normal",
+              "incite"
+            ]
+          },
+          {
+            "column_name": "incitement_prob_incitement",
+            "description": [
+              "Probability score that the text is inciting."
+            ],
+            "synonyms": [
+              "incitement probability",
+              "probability of incitement"
+            ]
+          },
+          {
+            "column_name": "text",
+            "description": [
+              "Original message text. Use for representative examples and vector search grounding."
+            ],
+            "enable_entity_matching": true,
+            "synonyms": [
+              "message",
+              "post",
+              "source text",
+              "original text"
+            ]
+          },
+          {
+            "column_name": "text_embedding",
+            "description": [
+              "Embedding vector used by the vector index. Exclude from normal analysis because it is high dimensional and not meaningful to show to users."
+            ],
+            "exclude": true
+          },
+          {
+            "column_name": "translated",
+            "description": [
+              "Translated version of the message text. Use this for English summaries when the original text is not English."
+            ],
+            "enable_entity_matching": true,
+            "synonyms": [
+              "translation",
+              "translated text",
+              "English text"
+            ]
+          }
+        ]
+      },
+      {
+        "identifier": "amit.bertopic.v2_topic_info_with_scores_layer_1",
+        "description": [
+          "Curated topic metadata view. Use it for topic names, descriptions, hierarchy, layer, counts, and scores. This is the preferred source for aggregate topic/narrative counts and human-readable topic labels."
+        ],
+        "column_configs": [
+          {
+            "column_name": "count",
+            "description": [
+              "Number of messages or occurrences assigned to this topic."
+            ],
+            "synonyms": [
+              "message count",
+              "topic count",
+              "volume"
+            ]
+          },
+          {
+            "column_name": "description",
+            "description": [
+              "Human-readable explanation of the topic."
+            ],
+            "enable_entity_matching": true,
+            "synonyms": [
+              "topic description",
+              "topic meaning"
+            ]
+          },
+          {
+            "column_name": "execution_id",
+            "description": [
+              "Pipeline execution id. Use as a filter or join key when multiple BERTopic executions exist."
+            ],
+            "synonyms": [
+              "run id",
+              "execution"
+            ]
+          },
+          {
+            "column_name": "father_topic",
+            "description": [
+              "Parent topic id/name in the topic hierarchy."
+            ],
+            "synonyms": [
+              "parent topic",
+              "father topic"
+            ]
+          },
+          {
+            "column_name": "full_topic",
+            "description": [
+              "Full human-readable topic or narrative label. Always include this when presenting topic ids."
+            ],
+            "enable_entity_matching": true,
+            "synonyms": [
+              "narrative",
+              "topic name",
+              "full narrative",
+              "theme"
+            ]
+          },
+          {
+            "column_name": "layer",
+            "description": [
+              "Topic hierarchy layer. Layer 1 is broad; higher layers are more specific child topics."
+            ],
+            "enable_format_assistance": true,
+            "synonyms": [
+              "level",
+              "hierarchy layer"
+            ]
+          },
+          {
+            "column_name": "score",
+            "description": [
+              "Topic quality or relevance score. Higher values generally indicate stronger or more useful topics."
+            ],
+            "synonyms": [
+              "topic score",
+              "quality score"
+            ]
+          },
+          {
+            "column_name": "title",
+            "description": [
+              "Short human-readable topic title."
+            ],
+            "enable_entity_matching": true,
+            "synonyms": [
+              "topic title",
+              "name"
+            ]
+          },
+          {
+            "column_name": "topic",
+            "description": [
+              "Numeric topic id. Never present this without also showing full_topic, title, or description."
+            ],
+            "synonyms": [
+              "topic id",
+              "cluster id"
+            ]
+          }
+        ]
+      },
+      {
+        "identifier": "amit.bertopic.v3_messages_sentiment_topic_consolidated",
+        "description": [
+          "Curated message-level view joined with consolidated topic labels and incitement classification. Use it for message examples by topic, incitement distribution, model/layer filters, timestamps, and narrative evidence."
+        ],
+        "column_configs": [
+          {
+            "column_name": "execution_id",
+            "description": [
+              "Pipeline execution id. Use as a join/filter key when needed."
+            ],
+            "synonyms": [
+              "run id",
+              "execution"
+            ]
+          },
+          {
+            "column_name": "father_topic",
+            "description": [
+              "Parent topic id in the hierarchy."
+            ],
+            "synonyms": [
+              "parent topic",
+              "father topic"
+            ]
+          },
+          {
+            "column_name": "full_topic",
+            "description": [
+              "Full human-readable topic or narrative label associated with the message."
+            ],
+            "enable_entity_matching": true,
+            "synonyms": [
+              "narrative",
+              "topic name",
+              "theme"
+            ]
+          },
+          {
+            "column_name": "id",
+            "description": [
+              "Unique message id. Use for joining vector-search hits to this message-level view."
+            ],
+            "synonyms": [
+              "message id",
+              "source id"
+            ]
+          },
+          {
+            "column_name": "incitment_label",
+            "description": [
+              "Incitement classification label in this view. The column name is intentionally spelled incitment_label in the source."
+            ],
+            "enable_entity_matching": true,
+            "enable_format_assistance": true,
+            "synonyms": [
+              "incitement",
+              "incitement label",
+              "abusive",
+              "normal",
+              "incite"
+            ]
+          },
+          {
+            "column_name": "layer",
+            "description": [
+              "Topic hierarchy layer for the message."
+            ],
+            "enable_format_assistance": true,
+            "synonyms": [
+              "level",
+              "hierarchy layer"
+            ]
+          },
+          {
+            "column_name": "model",
+            "description": [
+              "Model name or version that produced the message-topic assignment."
+            ],
+            "enable_entity_matching": true,
+            "enable_format_assistance": true,
+            "synonyms": [
+              "topic model",
+              "model"
+            ]
+          },
+          {
+            "column_name": "text",
+            "description": [
+              "Original message text. Use for representative examples."
+            ],
+            "enable_entity_matching": true,
+            "synonyms": [
+              "message",
+              "post",
+              "source text"
+            ]
+          },
+          {
+            "column_name": "timestamp",
+            "description": [
+              "Timestamp associated with the message analysis."
+            ],
+            "enable_format_assistance": true,
+            "synonyms": [
+              "time",
+              "date"
+            ]
+          },
+          {
+            "column_name": "topic",
+            "description": [
+              "Numeric topic id for the message. Always show the human-readable full_topic when discussing this id."
+            ],
+            "synonyms": [
+              "topic id",
+              "cluster id"
+            ]
+          },
+          {
+            "column_name": "translated",
+            "description": [
+              "Translated message text. Use for English examples or summaries when helpful."
+            ],
+            "enable_entity_matching": true,
+            "synonyms": [
+              "translation",
+              "translated text",
+              "English text"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "instructions": {
+    "text_instructions": [
+      {
+        "id": "10000000000000000000000000000001",
+        "content": [
+          "This Genie Space supports BERTopic narrative analysis. Use amit.bertopic.v2_topic_info_with_scores_layer_1 for topic metadata, topic counts, hierarchy, titles, and descriptions. Use amit.bertopic.v3_messages_sentiment_topic_consolidated for message-level evidence, incitement labels, timestamps, model filters, and examples. Use amit.bertopic.bertopic_input as the raw source table behind the vector index. The vector search index is amit.bertopic.bertopic_input_index. When the user asks for semantically related examples, closest evidence, or concepts that might not appear as exact keywords, use the SQL VECTOR_SEARCH function against amit.bertopic.bertopic_input_index and then join hits back to v3 on id when topic/incitement context is needed. Prefer HYBRID vector search for concept searches, with num_results defaulting to 10 unless the user asks for a different number. Always present human-readable topic labels such as full_topic, title, or description; never identify a narrative only by topic id. The message-level view uses the misspelled column incitment_label; the raw input table uses incitement_label. For analyst questions, start with the main finding, then support it with counts, incitement distribution, topic labels, and representative examples. If vector search is unavailable, slow, or returns no rows, answer from the structured views and state that direct vector evidence was limited."
+        ]
+      }
+    ],
+    "example_question_sqls": [
+      {
+        "id": "20000000000000000000000000000001",
+        "question": [
+          "What are the top narratives by message count?"
+        ],
+        "sql": [
+          "SELECT\n",
+          "  topic,\n",
+          "  full_topic,\n",
+          "  title,\n",
+          "  description,\n",
+          "  layer,\n",
+          "  count\n",
+          "FROM amit.bertopic.v2_topic_info_with_scores_layer_1\n",
+          "ORDER BY count DESC\n",
+          "LIMIT 10"
+        ]
+      },
+      {
+        "id": "20000000000000000000000000000002",
+        "question": [
+          "Which narratives contain the most incitement or abusive language?"
+        ],
+        "sql": [
+          "SELECT\n",
+          "  full_topic,\n",
+          "  incitment_label,\n",
+          "  COUNT(*) AS message_count\n",
+          "FROM amit.bertopic.v3_messages_sentiment_topic_consolidated\n",
+          "GROUP BY full_topic, incitment_label\n",
+          "ORDER BY message_count DESC\n",
+          "LIMIT 25"
+        ]
+      },
+      {
+        "id": "20000000000000000000000000000003",
+        "question": [
+          "Show representative messages for a narrative about government performance."
+        ],
+        "sql": [
+          "SELECT\n",
+          "  full_topic,\n",
+          "  incitment_label,\n",
+          "  translated,\n",
+          "  text\n",
+          "FROM amit.bertopic.v3_messages_sentiment_topic_consolidated\n",
+          "WHERE lower(full_topic) LIKE '%government%'\n",
+          "   OR lower(translated) LIKE '%government%'\n",
+          "   OR lower(text) LIKE '%government%'\n",
+          "LIMIT 20"
+        ]
+      },
+      {
+        "id": "20000000000000000000000000000004",
+        "question": [
+          "Find semantically relevant messages about municipal services using vector search."
+        ],
+        "sql": [
+          "SELECT\n",
+          "  search.id,\n",
+          "  search.text,\n",
+          "  search.translated\n",
+          "FROM VECTOR_SEARCH(\n",
+          "  index => 'amit.bertopic.bertopic_input_index',\n",
+          "  query_text => 'municipal services local authorities service delivery public institutions',\n",
+          "  query_type => 'HYBRID',\n",
+          "  num_results => 10\n",
+          ") AS search"
+        ]
+      },
+      {
+        "id": "20000000000000000000000000000005",
+        "question": [
+          "Use vector search and topic metadata together for government-related narratives."
+        ],
+        "sql": [
+          "WITH hits AS (\n",
+          "  SELECT id, text, translated\n",
+          "  FROM VECTOR_SEARCH(\n",
+          "    index => 'amit.bertopic.bertopic_input_index',\n",
+          "    query_text => 'government legitimacy authorities public services security economy trust',\n",
+          "    query_type => 'HYBRID',\n",
+          "    num_results => 10\n",
+          "  )\n",
+          ")\n",
+          "SELECT\n",
+          "  m.full_topic,\n",
+          "  m.incitment_label,\n",
+          "  h.id,\n",
+          "  COALESCE(h.translated, m.translated) AS translated,\n",
+          "  COALESCE(h.text, m.text) AS text\n",
+          "FROM hits h\n",
+          "LEFT JOIN amit.bertopic.v3_messages_sentiment_topic_consolidated m\n",
+          "  ON h.id = m.id\n",
+          "LIMIT 10"
+        ]
+      },
+      {
+        "id": "20000000000000000000000000000006",
+        "question": [
+          "Compare broad parent topics with more specific child topics."
+        ],
+        "sql": [
+          "SELECT\n",
+          "  father_topic,\n",
+          "  layer,\n",
+          "  topic,\n",
+          "  full_topic,\n",
+          "  title,\n",
+          "  description,\n",
+          "  count\n",
+          "FROM amit.bertopic.v2_topic_info_with_scores_layer_1\n",
+          "ORDER BY father_topic, layer, count DESC\n",
+          "LIMIT 50"
+        ]
+      }
+    ],
+    "sql_snippets": {
+      "filters": [
+        {
+          "id": "21000000000000000000000000000001",
+          "sql": [
+            "incitment_label IN ('abusive', 'incite', 'Abusive', 'Incite')"
+          ],
+          "display_name": "inciting or abusive messages",
+          "synonyms": [
+            "incitement",
+            "abusive",
+            "incite",
+            "hostile"
+          ],
+          "comment": [
+            "Use on v3_messages_sentiment_topic_consolidated when users ask about incitement, abusive language, hostility, or high-risk narratives."
+          ],
+          "instruction": [
+            "The consolidated message view spells the column incitment_label."
+          ]
+        }
+      ],
+      "expressions": [
+        {
+          "id": "22000000000000000000000000000001",
+          "alias": "topic_label",
+          "sql": [
+            "COALESCE(full_topic, title, description, CAST(topic AS STRING))"
+          ],
+          "display_name": "topic label",
+          "synonyms": [
+            "narrative label",
+            "topic name",
+            "human-readable topic"
+          ],
+          "comment": [
+            "Human-readable topic label fallback."
+          ],
+          "instruction": [
+            "Use this expression when presenting topic or narrative names."
+          ]
+        }
+      ],
+      "measures": [
+        {
+          "id": "23000000000000000000000000000001",
+          "alias": "message_count",
+          "sql": [
+            "COUNT(*)"
+          ],
+          "display_name": "message count",
+          "synonyms": [
+            "count",
+            "volume",
+            "number of messages"
+          ],
+          "comment": [
+            "Count of messages or rows."
+          ],
+          "instruction": [
+            "Use for aggregate narrative volume and distribution questions."
+          ]
+        }
+      ]
+    }
+  },
+  "benchmarks": {
+    "questions": [
+      {
+        "id": "30000000000000000000000000000001",
+        "question": [
+          "What are the top 5 narratives by count?"
+        ],
+        "answer": [
+          {
+            "format": "SQL",
+            "content": [
+              "SELECT topic, full_topic, title, count\n",
+              "FROM amit.bertopic.v2_topic_info_with_scores_layer_1\n",
+              "ORDER BY count DESC\n",
+              "LIMIT 5"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "30000000000000000000000000000002",
+        "question": [
+          "Which incitement labels are present and how many messages have each label?"
+        ],
+        "answer": [
+          {
+            "format": "SQL",
+            "content": [
+              "SELECT incitment_label, COUNT(*) AS message_count\n",
+              "FROM amit.bertopic.v3_messages_sentiment_topic_consolidated\n",
+              "GROUP BY incitment_label\n",
+              "ORDER BY message_count DESC"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "30000000000000000000000000000003",
+        "question": [
+          "Find semantically similar source texts about trust in authorities."
+        ],
+        "answer": [
+          {
+            "format": "SQL",
+            "content": [
+              "SELECT id, text, translated\n",
+              "FROM VECTOR_SEARCH(\n",
+              "  index => 'amit.bertopic.bertopic_input_index',\n",
+              "  query_text => 'trust in authorities public institutions legitimacy',\n",
+              "  query_type => 'HYBRID',\n",
+              "  num_results => 10\n",
+              ")"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

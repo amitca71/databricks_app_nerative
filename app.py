@@ -33,7 +33,7 @@ def get_env_int(name: str, default: int) -> int:
         return default
 
 
-GENIE_SPACE_ID = "01f1455a882b1cd69cba447d909362d0"
+GENIE_SPACE_ID = "01f14d5383a21f0e8626a80d72315de3"
 DASHBOARD_URL = f"{DATABRICKS_HOST}/dashboardsv3/01f1425e745118cf87a3d81fdf2ee5a7/published"
 GENIE_SPACE_URL = f"{DATABRICKS_HOST}/genie/rooms/{GENIE_SPACE_ID}"
 CONTEXT_MAX_EXCHANGES = 3
@@ -76,15 +76,19 @@ AGENT_MODE_WITH_RAG = "with_rag"
 AGENT_MODE_ONLY_VECTOR = "only_vector"
 DEFAULT_AGENT_MODE = AGENT_MODE_NO_RAG
 AGENT_MODE_LABELS = {
-    AGENT_MODE_NO_RAG: "Metadata only",
+    AGENT_MODE_NO_RAG: "Genie only",
     AGENT_MODE_WITH_RAG: "Agent",
     AGENT_MODE_ONLY_VECTOR: "Vector only",
 }
 AGENT_MODE_CAPTIONS = {
-    AGENT_MODE_NO_RAG: "Genie only. Skips vector search and synthesis.",
-    AGENT_MODE_WITH_RAG: "Genie metadata plus vector evidence, then synthesized by the agent.",
-    AGENT_MODE_ONLY_VECTOR: "Vector evidence plus synthesis. Skips Genie.",
+    AGENT_MODE_NO_RAG: "Uses only the curated Genie Space. No app-side vector search or selectable model.",
+    AGENT_MODE_WITH_RAG: "Uses Genie for structured analysis, vector search for evidence, and the selected model for synthesis.",
+    AGENT_MODE_ONLY_VECTOR: "Uses vector search for evidence and the selected model for synthesis. Skips Genie.",
 }
+AGENT_MODE_HELP = "\n\n".join(
+    f"{AGENT_MODE_LABELS[mode]}: {caption}"
+    for mode, caption in AGENT_MODE_CAPTIONS.items()
+)
 
 ANSWER_INSTRUCTIONS = """
 Answering instructions:
@@ -125,6 +129,7 @@ SAMPLE_QUESTIONS = {
         "Where do people describe failures in service delivery, security, economy, or public order?"
     ],
     "Peace & Conflict": [
+        "מה הנרטיב כלפי יהודים וישראל?",
         "What is the narrative toward peace?",
         "What is the narrative toward conflict, escalation, or resistance?",
         "Which topics contain the highest incitement or abusive language, and what narratives drive it?",
@@ -1139,27 +1144,27 @@ def main():
             format_func=lambda mode: AGENT_MODE_LABELS[mode],
             key="agent_mode",
             label_visibility="collapsed",
+            help=AGENT_MODE_HELP,
         )
         st.caption(AGENT_MODE_CAPTIONS[st.session_state.agent_mode])
 
-        st.selectbox(
-            "Agent Model",
-            options=list(AGENT_LLM_OPTIONS.keys()),
-            format_func=lambda endpoint: AGENT_LLM_OPTIONS[endpoint],
-            key="agent_llm_endpoint",
-            disabled=st.session_state.agent_mode == AGENT_MODE_NO_RAG,
-            help="Model serving endpoint used to synthesize Agent and Vector only answers.",
-        )
+        if st.session_state.agent_mode != AGENT_MODE_NO_RAG:
+            st.selectbox(
+                "Agent Model",
+                options=list(AGENT_LLM_OPTIONS.keys()),
+                format_func=lambda endpoint: AGENT_LLM_OPTIONS[endpoint],
+                key="agent_llm_endpoint",
+                help="Model serving endpoint used to synthesize Agent and Vector only answers.",
+            )
 
-        st.number_input(
-            "RAG Top N",
-            min_value=1,
-            max_value=50,
-            step=1,
-            key="rag_top_n",
-            disabled=st.session_state.agent_mode == AGENT_MODE_NO_RAG,
-            help="Number of vector search snippets to retrieve in Agent and Vector only modes.",
-        )
+            st.number_input(
+                "RAG Top N",
+                min_value=1,
+                max_value=50,
+                step=1,
+                key="rag_top_n",
+                help="Number of vector search snippets to retrieve.",
+            )
 
         st.markdown("---")
         st.markdown("### ℹ️ Tips")

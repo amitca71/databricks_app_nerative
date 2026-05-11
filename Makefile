@@ -2,7 +2,7 @@ PROFILE ?= dbc-de54b796-a6c4
 TF_EXEC_PATH ?= /usr/local/bin/terraform
 TF_VERSION ?= 1.5.7
 
-.PHONY: validate deploy app-deploy
+.PHONY: validate deploy app-deploy genie-deploy
 
 validate:
 	DATABRICKS_TF_EXEC_PATH=$(TF_EXEC_PATH) \
@@ -21,3 +21,7 @@ app-deploy:
 	DATABRICKS_TF_EXEC_PATH=$(TF_EXEC_PATH) \
 	DATABRICKS_TF_VERSION=$(TF_VERSION) \
 	databricks apps deploy --profile $(PROFILE)
+
+genie-deploy:
+	DATABRICKS_CONFIG_PROFILE=$(PROFILE) \
+	python scripts/deploy_genie_space.py

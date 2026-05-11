@@ -17,10 +17,10 @@ resources:
             permission: CAN_USE
 
         - name: genie-space
-          description: native_topic_and_toxicity Genie space
+          description: BERTopic Narrative Agent Genie space
           genie_space:
-            name: native_topic_and_toxicity
-            space_id: 01f1455a882b1cd69cba447d909362d0
+            name: BERTopic Narrative Agent
+            space_id: 01f14d5383a21f0e8626a80d72315de3
             permission: CAN_RUN
 
         - name: v2-topic-scores-l1
