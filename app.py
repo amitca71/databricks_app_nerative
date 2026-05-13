@@ -149,7 +149,148 @@ SAMPLE_QUESTIONS = {
 # ============================================================================
 # Databricks Genie API Functions
 # ============================================================================
+def display_genie_response(response: dict, results: dict | None) -> None:
+    if response.get("error"):
+        st.error(f"❌ Error: {response['error']}")
+        if response.get("details"):
+            with st.expander("Show error details"):
+                st.json(response["details"])
+        return
 
+    if not results:
+        return
+
+    st.markdown("---")
+    st.markdown("## Results")
+
+    displayed_content = False
+
+    if results.get("text_response"):
+        st.markdown("### Answer")
+        st.markdown(results["text_response"])
+        displayed_content = True
+
+    if results.get("source_documents"):
+        st.markdown("### Source snippets")
+        with st.expander(
+            f"Vector index sources ({len(results['source_documents'])})",
+            expanded=False,
+        ):
+            for source in results["source_documents"]:
+                metadata = source.get("metadata") or {}
+                source_id = metadata.get("id") or metadata.get("primary_key")
+                source_label = f"Source {source.get('rank')}"
+                if source_id is not None:
+                    source_label = f"{source_label} | id={source_id}"
+                st.markdown(f"**{source_label}**")
+                st.write(source.get("text", ""))
+
+                display_metadata = {
+                    key: value
+                    for key, value in metadata.items()
+                    if key not in VECTOR_SOURCE_TEXT_COLUMNS
+                    and key not in {"id", "primary_key"}
+                }
+                if display_metadata:
+                    st.json(display_metadata, expanded=False)
+        displayed_content = True
+
+    if results.get("source_warning"):
+        with st.expander("Vector index source warning"):
+            st.warning(results["source_warning"])
+
+    if results.get("structured_answer"):
+        with st.expander("Structured metadata answer"):
+            st.markdown(results["structured_answer"])
+
+    if results.get("synthesis_error"):
+        with st.expander("Agent synthesis warning"):
+            st.warning(results["synthesis_error"])
+
+    # === GENIE API CHART RENDERING (Fallback if the API provides it) ===
+    if results.get("chart_spec"):
+        st.markdown("### Genie Visualization")
+        import plotly.io as pio
+        import json
+        
+        chart_data = results["chart_spec"]
+        
+        try:
+            if "plotly" in chart_data:
+                fig_json = json.dumps(chart_data["plotly"])
+            elif "spec" in chart_data:
+                fig_json = json.dumps(chart_data["spec"])
+            else:
+                fig_json = json.dumps(chart_data)
+                
+            fig = pio.from_json(fig_json)
+            st.plotly_chart(fig, use_container_width=True)
+            displayed_content = True
+        except Exception as e:
+            st.warning(f"Could not render the Genie chart natively. Error: {e}")
+            with st.expander("Show raw chart JSON"):
+                st.json(chart_data)
+            displayed_content = True
+
+    # === DATA TABLE & STREAMLIT AUTO-CHART ===
+    if results.get("data_rows") and results.get("columns"):
+        import pandas as pd
+        df = pd.DataFrame(results["data_rows"], columns=results["columns"])
+
+        # Auto-Chart logic: If we have at least 2 columns and no explicit Genie chart was drawn
+        if len(df.columns) >= 2 and not results.get("chart_spec"):
+            # Try to convert the second column to numeric (to detect aggregations like COUNT)
+            numeric_col = pd.to_numeric(df.iloc[:, 1], errors='coerce')
+            
+            # If the second column contains actual numbers, draw a bar chart!
+            if not numeric_col.isna().all():
+                st.markdown("### Visualization")
+                chart_df = df.copy()
+                chart_df.iloc[:, 1] = numeric_col
+                # Set the first column as the X-Axis index
+                chart_df = chart_df.set_index(chart_df.columns[0])
+                st.bar_chart(chart_df)
+
+        st.markdown("### Data")
+        st.dataframe(df, use_container_width=True, height=400)
+
+        csv = df.to_csv(index=False)
+        st.download_button(
+            label="Download CSV",
+            data=csv,
+            file_name=f"bertopic_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv"
+        )
+        displayed_content = True
+        
+    elif results.get("row_count") == 0 and results.get("sql_query"):
+        st.info("The generated SQL query returned 0 rows.")
+        displayed_content = True
+
+    if results.get("sql_query"):
+        with st.expander("View generated SQL query"):
+            st.code(results["sql_query"], language="sql")
+
+    if results.get("suggested_questions"):
+        st.markdown("### Suggested follow-ups")
+        for question in results["suggested_questions"]:
+            st.markdown(f"- {question}")
+        displayed_content = True
+
+    if results.get("query_result_error"):
+        with st.expander("Show query result fetch warning"):
+            st.json(results["query_result_error"])
+
+    if not displayed_content:
+        st.warning("Genie completed, but the response did not include displayable text or rows.")
+        
+    # ALWAYS show the raw JSON so you can inspect what the API is doing under the hood
+    with st.expander("🛠️ Debug: Show raw Genie response"):
+        st.json(results.get("raw_result", {}))
+
+    if response.get("conversation_id"):
+        conversation_url = f"{DATABRICKS_HOST}/genie/rooms/{GENIE_SPACE_ID}?conversationId={response['conversation_id']}"
+        st.markdown(f"[View full conversation in Genie]({conversation_url})")
 def truncate_text(text: str, max_chars: int) -> str:
     text = " ".join(str(text or "").split())
     if len(text) <= max_chars:
@@ -868,108 +1009,34 @@ def extract_query_results(genie_response: dict) -> dict:
     return formatted_results
 
 
-def display_genie_response(response: dict, results: dict | None) -> None:
-    if response.get("error"):
-        st.error(f"❌ Error: {response['error']}")
-        if response.get("details"):
-            with st.expander("Show error details"):
-                st.json(response["details"])
-        return
-
-    if not results:
-        return
-
-    st.markdown("---")
-    st.markdown("## Results")
-
-    displayed_content = False
-
-    if results.get("text_response"):
-        st.markdown("### Answer")
-        st.markdown(results["text_response"])
-        displayed_content = True
-
-    if results.get("source_documents"):
-        st.markdown("### Source snippets")
-        with st.expander(
-            f"Vector index sources ({len(results['source_documents'])})",
-            expanded=False,
-        ):
-            for source in results["source_documents"]:
-                metadata = source.get("metadata") or {}
-                source_id = metadata.get("id") or metadata.get("primary_key")
-                source_label = f"Source {source.get('rank')}"
-                if source_id is not None:
-                    source_label = f"{source_label} | id={source_id}"
-                st.markdown(f"**{source_label}**")
-                st.write(source.get("text", ""))
-
-                display_metadata = {
-                    key: value
-                    for key, value in metadata.items()
-                    if key not in VECTOR_SOURCE_TEXT_COLUMNS
-                    and key not in {"id", "primary_key"}
-                }
-                if display_metadata:
-                    st.json(display_metadata, expanded=False)
-        displayed_content = True
-
-    if results.get("source_warning"):
-        with st.expander("Vector index source warning"):
-            st.warning(results["source_warning"])
-
-    if results.get("structured_answer"):
-        with st.expander("Structured metadata answer"):
-            st.markdown(results["structured_answer"])
-
-    if results.get("synthesis_error"):
-        with st.expander("Agent synthesis warning"):
-            st.warning(results["synthesis_error"])
-
-    if results.get("data_rows") and results.get("columns"):
-        st.markdown("### Data")
-        import pandas as pd
-        df = pd.DataFrame(results["data_rows"], columns=results["columns"])
-        st.dataframe(df, use_container_width=True, height=400)
-
-        csv = df.to_csv(index=False)
-        st.download_button(
-            label="Download CSV",
-            data=csv,
-            file_name=f"bertopic_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            mime="text/csv"
-        )
-        displayed_content = True
-    elif results.get("row_count") == 0 and results.get("sql_query"):
-        st.info("The generated SQL query returned 0 rows.")
-        displayed_content = True
-
-    if results.get("sql_query"):
-        with st.expander("View generated SQL query"):
-            st.code(results["sql_query"], language="sql")
-
-    if results.get("suggested_questions"):
-        st.markdown("### Suggested follow-ups")
-        for question in results["suggested_questions"]:
-            st.markdown(f"- {question}")
-        displayed_content = True
-
-    if results.get("query_result_error"):
-        with st.expander("Show query result fetch warning"):
-            st.json(results["query_result_error"])
-
-    if not displayed_content:
-        st.warning("Genie completed, but the response did not include displayable text or rows.")
-        with st.expander("Show raw Genie response"):
-            st.json(results.get("raw_result", {}))
-
-    if response.get("conversation_id"):
-        conversation_url = f"{DATABRICKS_HOST}/genie/rooms/{GENIE_SPACE_ID}?conversationId={response['conversation_id']}"
-        st.markdown(f"[View full conversation in Genie]({conversation_url})")
-
-# ============================================================================
-# Streamlit UI
-# ============================================================================
+# === NEW CHART RENDERING BLOCK ===
+    if results.get("chart_spec"):
+        st.markdown("### Visualization")
+        import plotly.io as pio
+        import json
+        
+        chart_data = results["chart_spec"]
+        
+        try:
+            # The exact key can vary slightly depending on the Genie API version, 
+            # so we check a few common locations where the Plotly spec hides.
+            if "plotly" in chart_data:
+                fig_json = json.dumps(chart_data["plotly"])
+            elif "spec" in chart_data:
+                fig_json = json.dumps(chart_data["spec"])
+            else:
+                fig_json = json.dumps(chart_data)
+                
+            fig = pio.from_json(fig_json)
+            st.plotly_chart(fig, use_container_width=True)
+            displayed_content = True
+            
+        except Exception as e:
+            st.warning(f"Could not render the Genie chart natively. Error: {e}")
+            with st.expander("Show raw chart JSON"):
+                st.json(chart_data)
+            displayed_content = True
+    # =================================
 
 def main():
     st.set_page_config(
@@ -1173,16 +1240,7 @@ def main():
             )
 
         st.markdown("---")
-        st.markdown("### ℹ️ Tips")
-        st.info("""
-        **Ask about:**
-        - Topic counts & distributions
-        - Incitement patterns
-        - Sample texts
-        - Hierarchies
-        - Time ranges
-        - Comparisons
-        """)
+
     
     # Process question
     if submit_button and user_question:
