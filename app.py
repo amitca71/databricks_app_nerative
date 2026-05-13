@@ -129,6 +129,7 @@ SAMPLE_QUESTIONS = {
         "What are the main emotional drivers behind support or opposition to peace?"
     ],
     "Public Mood": [
+        "מצא מסרים דומים סמנטית באמצעות חיפוש וקטורי הקשורים לחוסר אמון",
         "What is the overall public mood: anger, fear, frustration, hope, resignation, or confidence?",
         "Which topics show the most negative sentiment, and what are the key examples?",
         "Which topics show positive sentiment or satisfaction, and what are the key examples?",
