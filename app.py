@@ -90,26 +90,6 @@ AGENT_MODE_HELP = "\n\n".join(
     for mode, caption in AGENT_MODE_CAPTIONS.items()
 )
 
-ANSWER_INSTRUCTIONS = """
-Answering instructions:
-- Write for analysts, not engineers. Prefer interpretation, implications, and investigative takeaways over technical implementation details.
-- Start with the main insight in plain language, then support it with the most relevant counts, percentages, comparisons, and examples.
-- Use the retrieved source snippets from amit.bertopic.bertopic_input_index as supporting evidence whenever they are provided and relevant to the question.
-- When drawing from a retrieved snippet, identify it by source number or source id so the evidence can be traced.
-- When results show a pattern, explain why it may matter and what an analyst should look at next.
-- Call out caveats clearly, including small sample sizes, missing labels, zero-row results, ambiguous topic names, or filters such as execution_id/model/layer.
-- Keep SQL mechanics, table names, and IDs secondary unless they are needed to verify or reproduce the finding.
-- When presenting topics or narratives, never identify them only by ID or by a code-like cluster label such as "0_0", "-1_1", or "-1_0".
-- Treat `topic`, `father_topic`, and code-like `full_topic` values as internal identifiers, not analyst-facing narrative names.
-- Prefer `title` first, then `description`, then a non-code `full_topic`. If only an internal identifier is available, say that the title/description is missing instead of calling the identifier a narrative.
-- If a topic ID is useful, show it in parentheses after the human-readable title or description, not instead of it.
-- If the data does not contain a human-readable topic name for a topic ID, say that explicitly.
-- For message-level topic analysis, join `amit.bertopic.v3_messages_sentiment_topic_consolidated` to `amit.bertopic.v2_topic_info_with_scores_layer_1` on `execution_id`, `topic`, and `layer` so `title` or `description` is available.
-- In generated SQL, expose an analyst-facing column named `topic_display_name` using `title`, then `description`, then only a non-code `full_topic`.
-- When asked about a narrative or nerative, discuss the related topic(s), incitement level or label, and include relevant example messages when available.
-- Do not stop with "there are no messages" just because the exact term in the question is absent. If the exact concept is missing, say that direct evidence is limited, then analyze the closest relevant themes in the data. For questions about government or goverment, also check municipal services, local authorities, public institutions, service delivery, security, economy, public order, legitimacy, and trust in authorities.
-""".strip()
-
 # ============================================================================
 # Sample Questions
 # ============================================================================
@@ -182,8 +162,7 @@ def build_context_prompt(context_items: list[dict]) -> str:
         return ""
 
     context_lines = [
-        "Recent session context. Use this only to resolve follow-up references; "
-        "do not treat it as a substitute for querying the data."
+        "Recent context for follow-up references only; answer the current question from Genie data."
     ]
 
     for idx, item in enumerate(context_items[-CONTEXT_MAX_EXCHANGES:], start=1):
@@ -204,13 +183,15 @@ def build_genie_prompt(
     context_items: list[dict] | None = None,
     source_context: str | None = None,
 ) -> str:
-    prompt_parts = [ANSWER_INSTRUCTIONS]
+    prompt_parts = []
     context_prompt = build_context_prompt(context_items or [])
     if context_prompt:
         prompt_parts.append(context_prompt)
     if source_context:
         prompt_parts.append(source_context)
-    prompt_parts.append(f"Current user question:\n{question}")
+    if not prompt_parts:
+        return question
+    prompt_parts.append(f"Question:\n{question}")
     return "\n\n".join(prompt_parts)
 
 
@@ -552,20 +533,15 @@ def synthesize_agent_answer(
     endpoint_name: str,
 ) -> dict:
     system_prompt = f"""
-You are a narrative analysis agent.
-Use the supplied structured metadata results and vector source snippets to answer the user's question.
-Prefer a direct analytic answer over tool mechanics.
-Answer in the same language as the user's question. If the user asks in Hebrew, answer in Hebrew.
-Provide concrete examples from structured rows or vector snippets whenever examples are available.
-Be detailed but concise: high information density, minimal words, no generic prefix, no generic suffix.
-Use structured results for counts, topic metadata, labels, and aggregate claims.
-For topic labels, use analyst-facing names only: prefer `title`, then `description`, then a non-code `full_topic`.
-Values like `0_0`, `-1_1`, and `-1_0` are internal topic identifiers, not narrative titles. Do not present them as the narrative name.
-If the structured result contains only internal identifiers for a topic, state that the topic title/description is missing and keep the identifier only as an internal reference.
-Use vector snippets for example language, qualitative evidence, and grounding.
-If structured data and vector snippets disagree or one is missing, say that plainly.
-When citing examples from vector snippets, cite Source N or id when available.
-Do not invent rows, counts, topic names, or messages that are not present in the supplied context.
+You are a narrative analysis agent for professional intelligence analysts.
+Answer only from supplied structured metadata, vector snippets, and user context; no general knowledge or advice unless explicitly requested outside the dataset.
+Treat operational questions as dataset-analysis questions. Example: "where are electricity problems reported?" asks for geographic/message evidence, not contact instructions.
+Answer in the user's language. Start with the main judgment, be detailed but concise, and avoid generic prefixes/suffixes.
+Use structured results for counts, labels, and aggregate claims; use vector snippets for examples and qualitative evidence. Cite Source N or id when available.
+Topic labels: use `title` > `description` > non-code `full_topic`. Values like `0_0`, `-1_1`, and `-1_0` are internal identifiers, not narrative names.
+If only internal identifiers are available, say title/description is missing and keep the identifier only as an internal reference.
+State caveats when structured data or vector snippets are missing, limited, conflicting, or filtered.
+Do not invent rows, counts, topic names, or messages not present in the supplied context.
 Mode: {mode_label}
 """.strip()
 
@@ -1262,12 +1238,18 @@ def main():
                         source_documents = source_lookup.get("source_documents", [])
                         source_warning = source_lookup.get("warning")
 
+                    genie_context_items = (
+                        []
+                        if agent_mode == AGENT_MODE_NO_RAG
+                        else st.session_state.context_cache
+                    )
+
                     response = query_genie_space(
                         question=user_question,
                         space_id=GENIE_SPACE_ID,
                         auth_headers=auth_headers,
                         host=DATABRICKS_HOST,
-                        context_items=st.session_state.context_cache,
+                        context_items=genie_context_items,
                         source_context=source_context,
                     )
                     response["source_documents"] = source_documents
